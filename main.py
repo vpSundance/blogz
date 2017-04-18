@@ -6,7 +6,23 @@ import hashutils
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir), autoescape = True)
 
-class BlogHandler(webapp2.RequestHandler):
+class Handler(webapp2.RequestHandler):
+    """ 
+        Base request handler class for rendering content via jinja
+        because I'm not repeating that code a million times
+        thx /u/spez
+    """
+    def write(self, *a, **kw):
+        self.response.out.write(*a, **kw)
+
+    def render_str(self, template, **params):
+        t = jinja_env.get_template(template)
+        return t.render(params)
+
+    def render(self, template, **kw):
+        self.write(self.render_str(template, **kw))
+
+class BlogHandler(Handler):
     """ Utility class for gathering various useful methods that are used by most request handlers """
 
     def get_posts(self, limit, offset):
@@ -64,10 +80,7 @@ class IndexHandler(BlogHandler):
 
     def get(self):
         """ List all blog users """
-        users = User.all()
-        t = jinja_env.get_template("index.html")
-        response = t.render(users = users)
-        self.response.write(response)
+        self.render("index.html", users = users)
 
 class BlogIndexHandler(BlogHandler):
 
@@ -105,23 +118,20 @@ class BlogIndexHandler(BlogHandler):
             next_page = None
 
         # render the page
-        t = jinja_env.get_template("blog.html")
-        response = t.render(
+        self.render(
+                    "blog.html",
                     posts=posts,
                     page=page,
                     page_size=self.page_size,
                     prev_page=prev_page,
                     next_page=next_page,
                     username=username)
-        self.response.out.write(response)
 
 class NewPostHandler(BlogHandler):
 
     def render_form(self, title="", body="", error=""):
         """ Render the new post form with or without an error, based on parameters """
-        t = jinja_env.get_template("newpost.html")
-        response = t.render(title=title, body=body, error=error)
-        self.response.out.write(response)
+        self.render("newpost.html", title=title, body=body, error=error)
 
     def get(self):
         self.render_form()
@@ -154,14 +164,10 @@ class ViewPostHandler(BlogHandler):
 
         post = Post.get_by_id(int(id))
         if post:
-            t = jinja_env.get_template("post.html")
-            response = t.render(post=post)
+            self.render("post.html", post=post)
         else:
             error = "there is no post with id %s" % id
-            t = jinja_env.get_template("404.html")
-            response = t.render(error=error)
-
-        self.response.out.write(response)
+            self.render("404.html", error=error)
 
 class SignupHandler(BlogHandler):
 
@@ -194,9 +200,7 @@ class SignupHandler(BlogHandler):
             return email
 
     def get(self):
-        t = jinja_env.get_template("signup.html")
-        response = t.render(errors={})
-        self.response.out.write(response)
+        self.render("signup.html", errors={})
 
     def post(self):
         """
@@ -250,9 +254,7 @@ class SignupHandler(BlogHandler):
                 errors['email_error'] = "That's not a valid email"
 
         if has_error:
-            t = jinja_env.get_template("signup.html")
-            response = t.render(username=username, email=email, errors=errors)
-            self.response.out.write(response)
+            self.render("signup.html", username=username, email=email, errors=errors)
         else:
             self.redirect('/blog/newpost')
 
@@ -262,9 +264,7 @@ class LoginHandler(BlogHandler):
 
     def render_login_form(self, error=""):
         """ Render the login form with or without an error, based on parameters """
-        t = jinja_env.get_template("login.html")
-        response = t.render(error=error)
-        self.response.out.write(response)
+        self.render("login.html", error=error)
 
     def get(self):
         self.render_login_form()
