@@ -80,6 +80,7 @@ class IndexHandler(BlogHandler):
 
     def get(self):
         """ List all blog users """
+        users = User.all()
         self.render("index.html", users = users)
 
 class BlogIndexHandler(BlogHandler):
